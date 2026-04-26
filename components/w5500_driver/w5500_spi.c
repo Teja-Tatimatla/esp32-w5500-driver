@@ -84,7 +84,7 @@ w5500_spi_read(uint16_t addr, uint8_t block_select, uint8_t* read_bytes, size_t 
 
   if(read_bytes == NULL) {
     ESP_LOGE(TAG, "%s", "Invalid read_bytes ptr");
-    return ESP_ERR_INVALID_STATE;
+    return ESP_ERR_INVALID_ARG;
   }
 
   const size_t total = 3 + len;
@@ -92,6 +92,8 @@ w5500_spi_read(uint16_t addr, uint8_t block_select, uint8_t* read_bytes, size_t 
   uint8_t *rx = calloc(total, 1);
   if(tx == NULL || rx == NULL) {
     ESP_LOGE(TAG, "%s", "Memory allocation failed");
+    free(tx);
+    free(rx);
     return ESP_ERR_NO_MEM;
   }
 
