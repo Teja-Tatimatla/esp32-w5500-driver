@@ -49,6 +49,16 @@ w5500_read_rx_buffer(uint8_t socket_num, uint16_t offset, uint8_t* buffer, size_
 }
 
 esp_err_t
+w5500_write_tx_buffer(uint8_t socket_num, uint16_t offset, const uint8_t* data, size_t len) {
+  if(data == NULL && len > 0) {
+    return ESP_ERR_INVALID_ARG;
+  }
+
+  return w5500_spi_write(offset, W5500_BSB_SOCK_TX(socket_num), data, len);
+}
+
+
+esp_err_t
 w5500_read_versionr(uint8_t *version) {
   return w5500_reg_read8(W5500_REG_VERSIONR, W5500_BSB_COMMON, version);
 }
@@ -218,11 +228,50 @@ w5500_read_sn_rx_rsr_stable(uint8_t socket_num, uint16_t* value) {
 }
 
 esp_err_t
+w5500_read_sn_tx_fsr_stable(uint8_t socket_num, uint16_t* value) {
+  if(value == NULL) {
+    return ESP_ERR_INVALID_ARG;
+  }
+
+  for(size_t i = 0; i < 8; i++) {
+    uint16_t v1 = 0;
+    uint16_t v2 = 0;
+
+    esp_err_t err = w5500_reg_read16(W5500_SREG_SN_TX_FSR, W5500_BSB_SOCK_REG(socket_num), &v1);
+    if(err != ESP_OK) {
+      return err;
+    }
+
+    err = w5500_reg_read16(W5500_SREG_SN_TX_FSR, W5500_BSB_SOCK_REG(socket_num), &v2);
+    if(err != ESP_OK) {
+      return err;
+    }
+
+    if(v1 == v2) {
+      *value = v1;
+      return ESP_OK;
+    }
+  }
+
+  return ESP_ERR_TIMEOUT;
+}
+
+esp_err_t
 w5500_read_sn_rx_rd(uint8_t socket_num, uint16_t* value) {
   return w5500_reg_read16(W5500_SREG_SN_RX_RD, W5500_BSB_SOCK_REG(socket_num), value);
 }
 
 esp_err_t
+w5500_read_sn_tx_wr(uint8_t socket_num, uint16_t* value) {
+  return w5500_reg_read16(W5500_SREG_SN_TX_WR, W5500_BSB_SOCK_REG(socket_num), value);
+}
+
+esp_err_t
 w5500_write_sn_rx_rd(uint8_t socket_num, uint16_t value) {
   return w5500_reg_write16(W5500_SREG_SN_RX_RD, W5500_BSB_SOCK_REG(socket_num), value);
+}
+
+esp_err_t
+w5500_write_sn_tx_wr(uint8_t socket_num, uint16_t value) {
+  return w5500_reg_write16(W5500_SREG_SN_TX_WR, W5500_BSB_SOCK_REG(socket_num), value);
 }
