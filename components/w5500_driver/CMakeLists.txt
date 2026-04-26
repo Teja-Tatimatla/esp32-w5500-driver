@@ -1,0 +1,13 @@
+idf_component_register(
+    SRCS
+        "w5500_driver.c"
+        "w5500_spi.c"
+        "w5500_regs.c"
+    INCLUDE_DIRS
+        "include"
+    REQUIRES
+        esp_common
+        esp_driver_spi
+    PRIV_REQUIRES
+        esp_driver_gpio
+)
