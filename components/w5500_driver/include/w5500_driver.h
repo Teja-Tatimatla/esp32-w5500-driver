@@ -37,4 +37,5 @@ esp_err_t w5500_interrupts_enable_socket0(void);
 esp_err_t w5500_driver_service_interrupts(void);
 
 esp_err_t w5500_socket0_open_macraw(void);
+esp_err_t w5500_socket0_send_raw_frame(const uint8_t* frame, size_t len);
 #endif

@@ -41,10 +41,13 @@
 #define W5500_SREG_SN_TXBUF_SIZE  0x001F
 #define W5500_SREG_SN_RX_RSR      0x0026 // received size register
 #define W5500_SREG_SN_RX_RD       0x0028 // RX read pointer
+#define W5500_SREG_SN_TX_FSR      0x0020 // TX free size register
+#define W5500_SREG_SN_TX_WR       0x0024 // tx write pointer
 
 #define W5500_SN_CR_OPEN          0x01 // command register open value
 #define W5500_SN_CR_CLOSE         0x10 // command register close value
 #define W5500_SN_CR_RECV          0x40 // command register receive value
+#define W5500_SN_CR_SEND          0x20 // command register send value
 
 #define W5500_IR_CONFLICT     (1u << 7)
 #define W5500_IR_UNREACH      (1u << 6)
@@ -79,6 +82,10 @@ typedef struct {
   TaskHandle_t interrupt_task_handle;
   volatile uint32_t interrupt_isr_count;
   uint8_t socket0_rx_scratch[W5500_SOCKET0_RX_SCRATCH_SIZE];
+  bool socket0_tx_in_flight;
+  uint16_t socket0_last_tx_len;
+  uint32_t socket0_tx_complete_count;
+  uint32_t socket0_tx_timeout_count;
 } w5500_context_t;
 
 extern w5500_context_t w5500_global_context;
@@ -96,6 +103,7 @@ esp_err_t w5500_reg_write8(uint16_t addr, uint8_t block_select, uint8_t value);
 esp_err_t w5500_reg_write16(uint16_t addr, uint8_t block_select, uint16_t value);
 
 esp_err_t w5500_read_rx_buffer(uint8_t socket_num, uint16_t offset, uint8_t* buffer, size_t len);
+esp_err_t w5500_write_tx_buffer(uint8_t socket_num, uint16_t offset, const uint8_t* data, size_t len);
 
 esp_err_t w5500_read_versionr(uint8_t* version);
 esp_err_t w5500_read_phycfgr(uint8_t* phycfgr);
@@ -123,7 +131,10 @@ esp_err_t w5500_wait_for_sn_cr_clear(uint8_t socket_num, TickType_t timeout_tick
 esp_err_t w5500_write_sn_rxbuf_size(uint8_t socket_num, uint8_t value);
 esp_err_t w5500_write_sn_txbuf_size(uint8_t socket_num, uint8_t value);
 esp_err_t w5500_read_sn_rx_rsr_stable(uint8_t socket_num, uint16_t* value);
+esp_err_t w5500_read_sn_tx_fsr_stable(uint8_t socket_num, uint16_t* value);
 esp_err_t w5500_read_sn_rx_rd(uint8_t socket_num, uint16_t* value);
+esp_err_t w5500_read_sn_tx_wr(uint8_t socket_num, uint16_t* value);
 esp_err_t w5500_write_sn_rx_rd(uint8_t socket_num, uint16_t value);
+esp_err_t w5500_write_sn_tx_wr(uint8_t socket_num, uint16_t value);
 
 #endif
