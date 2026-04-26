@@ -61,6 +61,8 @@ app_main(void) {
     ESP_LOGI(TAG, "W5500 SPI/register path looks healthy");
   }
 
+  ESP_ERROR_CHECK(w5500_socket0_open_macraw());
+
   xTaskCreate(w5500_interrupt_handler_task, "w5500_interrupt_handler_task", 4096, NULL, 10, NULL);
 }
 
