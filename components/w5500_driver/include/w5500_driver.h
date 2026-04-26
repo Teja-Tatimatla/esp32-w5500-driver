@@ -35,4 +35,6 @@ uint32_t w5500_driver_get_interrupt_count(void);
 
 esp_err_t w5500_interrupts_enable_socket0(void);
 esp_err_t w5500_driver_service_interrupts(void);
+
+esp_err_t w5500_socket0_open_macraw(void);
 #endif

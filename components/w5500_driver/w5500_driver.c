@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include "freertos/FreeRTOS.h"
+#include "freertos/projdefs.h"
 #include "freertos/task.h"
 
 #include "driver/gpio.h"
@@ -13,6 +14,8 @@
 
 
 static const char *TAG = "w5500_driver";
+
+static esp_err_t w5500_socket0_drain_rx(void);
 
 static void IRAM_ATTR
 w5500_gpio_isr_handler(void* args) {
@@ -310,8 +313,11 @@ w5500_handle_socket0_ir(uint8_t sn_ir) {
 
   if(sn_ir & W5500_SN_IR_RECV) {
     ESP_LOGI(TAG, "S0_IR: RECV");
-    // TODO: Drain RX frames and issue RECV command
-    // Later, clear w5500_SN_IR_RECV in sn_IR
+
+    esp_err_t err = w5500_socket0_drain_rx();
+    if(err != ESP_OK) {
+      return err;
+    }
   }
 
   if(sn_ir & W5500_SN_IR_SEND_OK) {
@@ -383,4 +389,127 @@ w5500_driver_service_interrupts(void) {
       return ESP_OK;
     }
   }
+}
+
+static esp_err_t
+w5500_socket0_drain_rx(void) {
+  uint8_t sr = 0;
+  esp_err_t err = w5500_read_sn_sr(0, &sr);
+  if(err != ESP_OK) {
+    return err;
+  }
+
+  if(sr != W5500_SOCK_MACRAW) {
+    ESP_LOGE(TAG, "Socket0 not in MACRAW mode (Sn_SR=0x%02X)", sr);
+    return ESP_ERR_INVALID_STATE;
+  }
+
+  while(1) {
+    uint16_t rx_size = 0;
+    uint16_t rx_rd = 0;
+
+    err = w5500_read_sn_rx_rsr_stable(0, &rx_size);
+    if(err != ESP_OK) {
+      return err;
+    }
+
+    if(rx_size == 0) {
+      return ESP_OK;
+    }
+
+    if(rx_size > sizeof(w5500_global_context.socket0_rx_scratch)) {
+      ESP_LOGE(TAG, "RX drain too large: %u bytes", (size_t)rx_size);
+      return ESP_ERR_INVALID_SIZE;
+    }
+
+    err = w5500_read_sn_rx_rd(0, &rx_rd);
+    if(err != ESP_OK) {
+      return err;
+    }
+
+    err = w5500_read_rx_buffer(0, rx_rd, w5500_global_context.socket0_rx_scratch, rx_size);
+    if(err != ESP_OK) {
+      return err;
+    }
+
+    rx_rd = (uint16_t)(rx_rd + rx_size);
+
+    err = w5500_write_sn_rx_rd(0, rx_rd);
+    if(err != ESP_OK) {
+      return err;
+    }
+
+    err = w5500_write_sn_cr(0, W5500_SN_CR_RECV);
+    if(err != ESP_OK) {
+      return err;
+    }
+
+    err = w5500_wait_for_sn_cr_clear(0, pdMS_TO_TICKS(100));
+    if(err != ESP_OK) {
+      return err;
+    }
+
+    ESP_LOGI(TAG, "Drained %u RX bytes from socket0", (size_t)rx_size);
+    size_t preview = rx_size < 64 ? rx_size : 64;
+    ESP_LOG_BUFFER_HEXDUMP(TAG, w5500_global_context.socket0_rx_scratch, preview, ESP_LOG_INFO);
+  }
+}
+
+esp_err_t
+w5500_socket0_open_macraw(void) {
+  esp_err_t err;
+  uint8_t sr = 0;
+
+  err = w5500_write_sn_cr(0, W5500_SN_CR_CLOSE);
+  if(err != ESP_OK) {
+    return err;
+  }
+
+  err = w5500_wait_for_sn_cr_clear(0, pdMS_TO_TICKS(100));
+  if(err != ESP_OK) {
+    return err;
+  }
+
+  err = w5500_clear_sn_ir(0, 0x1F);
+  if(err != ESP_OK) {
+    return err;
+  }
+
+  err = w5500_write_sn_rxbuf_size(0, 2);
+  if(err != ESP_OK) {
+    return err;
+  }
+
+  err = w5500_write_sn_txbuf_size(0, 2);
+  if(err != ESP_OK) {
+    return err;
+  }
+
+  err = w5500_write_sn_mr(0, W5500_SN_MR_MACRAW | W5500_SN_MR_MFEN);
+  if(err != ESP_OK) {
+    return err;
+  }
+
+  err = w5500_write_sn_cr(0, W5500_SN_CR_OPEN);
+  if(err != ESP_OK) {
+    return err;
+  }
+
+  err = w5500_wait_for_sn_cr_clear(0, pdMS_TO_TICKS(100));
+  if(err != ESP_OK) {
+    return err;
+  }
+
+  err = w5500_read_sn_sr(0, &sr);
+  if(err != ESP_OK) {
+    return err;
+  }
+
+  if(sr != W5500_SOCK_MACRAW) {
+    ESP_LOGE(TAG, "Socket0 failed to enter MACRAW, Sn_SR=0x%02X", sr);
+    return ESP_ERR_INVALID_RESPONSE;
+  }
+
+  ESP_LOGI(TAG, "Socket opened in MACRAW mode");
+  return ESP_OK;
 }
