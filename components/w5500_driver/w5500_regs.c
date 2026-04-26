@@ -1,7 +1,9 @@
+#include "esp_err.h"
 #include "w5500_driver_priv.h"
 #include "esp_check.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include <stdint.h>
 
 
 esp_err_t
@@ -48,4 +50,59 @@ w5500_soft_reset_lowlevel(void) {
   }
 
   return ESP_ERR_TIMEOUT;
+}
+
+esp_err_t
+w5500_read_ir(uint8_t* value) {
+  return w5500_reg_read8(W5500_REG_IR, W5500_BSB_COMMON, value);
+}
+
+esp_err_t
+w5500_clear_ir(uint8_t value) {
+  return w5500_reg_write8(W5500_REG_IR, W5500_BSB_COMMON, value);
+}
+
+esp_err_t
+w5500_read_imr(uint8_t* value) {
+  return w5500_reg_read8(W5500_REG_IMR, W5500_BSB_COMMON, value);
+}
+
+esp_err_t
+w5500_write_imr(uint8_t value) {
+  return w5500_reg_write8(W5500_REG_IMR, W5500_BSB_COMMON, value);
+}
+
+esp_err_t
+w5500_read_sir(uint8_t* value) {
+  return w5500_reg_read8(W5500_REG_SIR, W5500_BSB_COMMON, value);
+}
+
+esp_err_t
+w5500_read_simr(uint8_t* value) {
+  return w5500_reg_read8(W5500_REG_SIMR, W5500_BSB_COMMON, value);
+}
+
+esp_err_t
+w5500_write_simr(uint8_t value) {
+  return w5500_reg_write8(W5500_REG_SIMR, W5500_BSB_COMMON, value);
+}
+
+esp_err_t
+w5500_read_sn_ir(uint8_t socket_num, uint8_t* value) {
+  return w5500_reg_read8(W5500_SREG_SN_IR, W5500_BSB_SOCK_REG(socket_num), value);
+}
+
+esp_err_t
+w5500_clear_sn_ir(uint8_t socket_num, uint8_t value) {
+  return w5500_reg_write8(W5500_SREG_SN_IR, W5500_BSB_SOCK_REG(socket_num), value);
+}
+
+esp_err_t
+w5500_read_sn_imr(uint8_t socket_num, uint8_t* value) {
+  return w5500_reg_read8(W5500_SREG_SN_IMR, W5500_BSB_SOCK_REG(socket_num), value);
+}
+
+esp_err_t
+w5500_write_sn_imr(uint8_t socket_num, uint8_t value) {
+  return w5500_reg_write8(W5500_SREG_SN_IMR, W5500_BSB_SOCK_REG(socket_num), value);
 }

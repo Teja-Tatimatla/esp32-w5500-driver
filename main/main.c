@@ -6,10 +6,8 @@
 #include "esp_err.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
-#include "freertos/projdefs.h"
 #include "freertos/task.h"
 
-#include "portmacro.h"
 #include "w5500_driver.h"
 
 static const char *TAG = "main";
@@ -71,14 +69,11 @@ w5500_interrupt_handler_task(void* args) {
   (void)args;
 
   ESP_ERROR_CHECK(w5500_driver_register_interrupt_task(xTaskGetCurrentTaskHandle()));
+  ESP_ERROR_CHECK(w5500_interrupts_enable_socket0());
   ESP_LOGI(TAG, "INT wait task registered, initial INTn level=%d", w5500_driver_get_interrupt_level());
 
   while(1) {
-    uint32_t notify_count = ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-
-    ESP_LOGI(TAG, "INT task woke up: notifications=%" PRIu32 ", isr_count=%" PRIu32 ", INTn level=%d",
-              notify_count, w5500_driver_get_interrupt_count(), w5500_driver_get_interrupt_level());
-
-    //TODO: Talk to w5500 interrupt register.
+    ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+    ESP_ERROR_CHECK(w5500_driver_service_interrupts());
   }
 }

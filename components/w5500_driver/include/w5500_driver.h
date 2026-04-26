@@ -2,6 +2,9 @@
 #define W5500_DRIVER_H
 
 #include <stdint.h>
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+
 #include "driver/spi_master.h"
 #include "esp_err.h"
 
@@ -30,4 +33,6 @@ esp_err_t w5500_driver_disable_interrupt_gpio(void);
 int w5500_driver_get_interrupt_level(void);
 uint32_t w5500_driver_get_interrupt_count(void);
 
+esp_err_t w5500_interrupts_enable_socket0(void);
+esp_err_t w5500_driver_service_interrupts(void);
 #endif
