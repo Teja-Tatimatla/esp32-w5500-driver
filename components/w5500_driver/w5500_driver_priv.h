@@ -4,9 +4,13 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
+
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include "driver/spi_master.h"
 #include "driver/gpio.h"
 #include "esp_err.h"
+#include "freertos/idf_additions.h"
 #include "w5500_driver.h"
 
 #define W5500_SPI_RWB_READ    0x00
@@ -25,6 +29,10 @@ typedef struct {
   w5500_driver_config_t cfg;
   spi_device_handle_t spi_handle;
   bool initialized;
+  bool gpio_isr_service_installed;
+  bool gpio_handler_installed;
+  TaskHandle_t interrupt_task_handle;
+  volatile uint32_t interrupt_isr_count;
 } w5500_context_t;
 
 extern w5500_context_t w5500_global_context;

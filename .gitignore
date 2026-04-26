@@ -28,3 +28,7 @@ __pycache__/
 *.swp
 *.swo
 *~
+
+# Cache and symlinks
+.cache/
+compile_commands.json
