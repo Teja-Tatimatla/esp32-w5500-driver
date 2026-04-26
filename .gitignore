@@ -1,0 +1,30 @@
+# ESP-IDF build output
+build/
+build_*_*/
+
+# Generated project config
+sdkconfig
+sdkconfig.old
+
+# ESP-IDF component manager downloaded deps
+managed_components/
+
+# Root clangd config
+/.clangd
+
+# macOS
+.DS_Store
+
+# Editor files
+.zed/
+.idea/
+.vscode/
+
+# Python cache
+__pycache__/
+.pytest_cache/
+
+# Common temp files
+*.swp
+*.swo
+*~
