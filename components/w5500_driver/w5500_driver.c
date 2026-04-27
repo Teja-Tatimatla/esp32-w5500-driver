@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include <inttypes.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/projdefs.h"
 #include "freertos/task.h"
@@ -15,7 +16,7 @@
 
 static const char *TAG = "w5500_driver";
 
-static esp_err_t w5500_socket0_drain_rx(void);
+// static esp_err_t w5500_socket0_drain_rx(void);
 
 static void IRAM_ATTR
 w5500_gpio_isr_handler(void* args) {
@@ -314,10 +315,12 @@ w5500_handle_socket0_ir(uint8_t sn_ir) {
   if(sn_ir & W5500_SN_IR_RECV) {
     ESP_LOGI(TAG, "S0_IR: RECV");
 
+    /*
     esp_err_t err = w5500_socket0_drain_rx();
     if(err != ESP_OK) {
       return err;
     }
+    */
   }
 
   if(sn_ir & W5500_SN_IR_SEND_OK) {
@@ -402,6 +405,7 @@ w5500_driver_service_interrupts(void) {
   }
 }
 
+/*
 static esp_err_t
 w5500_socket0_drain_rx(void) {
   uint8_t sr = 0;
@@ -465,6 +469,7 @@ w5500_socket0_drain_rx(void) {
     ESP_LOG_BUFFER_HEXDUMP(TAG, w5500_global_context.socket0_rx_scratch, preview, ESP_LOG_INFO);
   }
 }
+*/
 
 esp_err_t
 w5500_socket0_send_raw_frame(const uint8_t* frame, size_t len) {
