@@ -8,6 +8,7 @@
 
 #include "esp_err.h"
 #include "esp_eth_mac.h"
+#include "esp_eth_phy.h"
 
 typedef struct {
   spi_host_device_t spi_host;
@@ -35,4 +36,7 @@ int w5500_driver_get_interrupt_level(void);
 uint32_t w5500_driver_get_interrupt_count(void);
 
 esp_err_t w5500_interrupts_enable_socket0(void);
+
+esp_eth_mac_t* w5500_eth_mac_new(const eth_mac_config_t* config);
+esp_eth_phy_t* w5500_eth_phy_new(const eth_phy_config_t* config);
 #endif

@@ -4,6 +4,7 @@ idf_component_register(
         "w5500_spi.c"
         "w5500_regs.c"
         "w5500_mac.c"
+        "w5500_phy.c"
     INCLUDE_DIRS
         "include"
     REQUIRES

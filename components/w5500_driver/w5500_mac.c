@@ -77,7 +77,8 @@ w5500_eth_mac_t* w5500_mac_from_parent(esp_eth_mac_t* mac) {
   return (w5500_eth_mac_t *)mac;
 }
 
-esp_eth_mac_t* w5500_eth_mac_new(const eth_mac_config_t* config) {
+esp_eth_mac_t*
+w5500_eth_mac_new(const eth_mac_config_t* config) {
   if(config == NULL) {
     return NULL;
   }
@@ -134,7 +135,8 @@ esp_eth_mac_t* w5500_eth_mac_new(const eth_mac_config_t* config) {
 }
 
 // wiring
-static esp_err_t w5500_mac_set_mediator(esp_eth_mac_t* mac, esp_eth_mediator_t* eth) {
+static esp_err_t
+w5500_mac_set_mediator(esp_eth_mac_t* mac, esp_eth_mediator_t* eth) {
   if (mac == NULL || eth == NULL) {
     return ESP_ERR_INVALID_ARG;
   }
@@ -145,7 +147,8 @@ static esp_err_t w5500_mac_set_mediator(esp_eth_mac_t* mac, esp_eth_mediator_t* 
   return ESP_OK;
 }
 
-static esp_err_t w5500_mac_init(esp_eth_mac_t* mac) {
+static esp_err_t
+w5500_mac_init(esp_eth_mac_t* mac) {
   if (mac == NULL) {
     return ESP_ERR_INVALID_ARG;
   }
@@ -156,10 +159,17 @@ static esp_err_t w5500_mac_init(esp_eth_mac_t* mac) {
     ext_mac->mediator->on_state_changed(ext_mac->mediator, ETH_STATE_LLINIT, NULL);
   }
 
+  esp_err_t err = w5500_write_shar(ext_mac->mac_addr);
+  if (err != ESP_OK) {
+    ESP_LOGE(TAG, "write SHAR failed");
+    return err;
+  }
+
   return ESP_OK;
 }
 
-static esp_err_t w5500_mac_start(esp_eth_mac_t* mac) {
+static esp_err_t
+w5500_mac_start(esp_eth_mac_t* mac) {
   if (mac == NULL) {
     return ESP_ERR_INVALID_ARG;
   }
@@ -200,7 +210,8 @@ static esp_err_t w5500_mac_start(esp_eth_mac_t* mac) {
   return ESP_OK;
 }
 
-static esp_err_t w5500_mac_stop(esp_eth_mac_t* mac) {
+static esp_err_t
+w5500_mac_stop(esp_eth_mac_t* mac) {
   if (mac == NULL) {
     return ESP_ERR_INVALID_ARG;
   }
@@ -221,7 +232,8 @@ static esp_err_t w5500_mac_stop(esp_eth_mac_t* mac) {
   return ESP_OK;
 }
 
-static esp_err_t w5500_mac_deinit(esp_eth_mac_t* mac) {
+static esp_err_t
+w5500_mac_deinit(esp_eth_mac_t* mac) {
   if (mac == NULL) {
     return ESP_ERR_INVALID_ARG;
   }
@@ -236,7 +248,8 @@ static esp_err_t w5500_mac_deinit(esp_eth_mac_t* mac) {
 }
 
 // TX/Rx functions
-static esp_err_t w5500_mac_transmit(esp_eth_mac_t* mac, uint8_t* buf, uint32_t length) {
+static esp_err_t
+w5500_mac_transmit(esp_eth_mac_t* mac, uint8_t* buf, uint32_t length) {
   if (mac == NULL || buf == NULL || length == 0) {
     return ESP_ERR_INVALID_ARG;
   }
@@ -244,7 +257,8 @@ static esp_err_t w5500_mac_transmit(esp_eth_mac_t* mac, uint8_t* buf, uint32_t l
   return w5500_socket0_send_raw_frame(buf, length);
 }
 
-static esp_err_t w5500_mac_transmit_ctrl_vargs(esp_eth_mac_t* mac, void* ctrl, uint32_t argc, va_list args) {
+static esp_err_t
+w5500_mac_transmit_ctrl_vargs(esp_eth_mac_t* mac, void* ctrl, uint32_t argc, va_list args) {
   (void)mac;
   (void)ctrl;
   (void)argc;
@@ -252,7 +266,8 @@ static esp_err_t w5500_mac_transmit_ctrl_vargs(esp_eth_mac_t* mac, void* ctrl, u
   return ESP_ERR_NOT_SUPPORTED;
 }
 
-static esp_err_t w5500_mac_receive(esp_eth_mac_t* mac, uint8_t* buf, uint32_t* length) {
+static esp_err_t
+w5500_mac_receive(esp_eth_mac_t* mac, uint8_t* buf, uint32_t* length) {
   if (mac == NULL) {
       return ESP_ERR_INVALID_ARG;
   }
@@ -262,7 +277,8 @@ static esp_err_t w5500_mac_receive(esp_eth_mac_t* mac, uint8_t* buf, uint32_t* l
 }
 
 // PHY hooks
-static esp_err_t w5500_mac_read_phy_reg(esp_eth_mac_t* mac, uint32_t phy_addr, uint32_t phy_reg, uint32_t* reg_value) {
+static esp_err_t
+w5500_mac_read_phy_reg(esp_eth_mac_t* mac, uint32_t phy_addr, uint32_t phy_reg, uint32_t* reg_value) {
   (void)mac;
   (void)phy_addr;
   (void)phy_reg;
@@ -270,7 +286,8 @@ static esp_err_t w5500_mac_read_phy_reg(esp_eth_mac_t* mac, uint32_t phy_addr, u
   return ESP_ERR_NOT_SUPPORTED;
 }
 
-static esp_err_t w5500_mac_write_phy_reg(esp_eth_mac_t* mac, uint32_t phy_addr, uint32_t phy_reg, uint32_t reg_value) {
+static esp_err_t
+w5500_mac_write_phy_reg(esp_eth_mac_t* mac, uint32_t phy_addr, uint32_t phy_reg, uint32_t reg_value) {
   (void)mac;
   (void)phy_addr;
   (void)phy_reg;
@@ -279,40 +296,49 @@ static esp_err_t w5500_mac_write_phy_reg(esp_eth_mac_t* mac, uint32_t phy_addr, 
 }
 
 // address/filer config
-static esp_err_t w5500_mac_set_addr(esp_eth_mac_t* mac, uint8_t* addr) {
+static esp_err_t
+w5500_mac_set_addr(esp_eth_mac_t* mac, uint8_t* addr) {
   if (mac == NULL || addr == NULL) {
     return ESP_ERR_INVALID_ARG;
   }
 
   w5500_eth_mac_t* ext_mac = w5500_mac_from_parent(mac);
   memcpy(ext_mac->mac_addr, addr, 6);
-  return ESP_OK;
+
+  return w5500_write_shar(ext_mac->mac_addr);
 }
 
-static esp_err_t w5500_mac_get_addr(esp_eth_mac_t* mac, uint8_t* addr) {
+static esp_err_t
+w5500_mac_get_addr(esp_eth_mac_t* mac, uint8_t* addr) {
   if (mac == NULL || addr == NULL) {
     return ESP_ERR_INVALID_ARG;
   }
 
   w5500_eth_mac_t* ext_mac = w5500_mac_from_parent(mac);
-  memcpy(addr, ext_mac->mac_addr, 6);
+
+  ESP_RETURN_ON_ERROR(w5500_read_shar(addr), TAG, "read SHAR failed");
+  memcpy(ext_mac->mac_addr, addr, 6);
+
   return ESP_OK;
 }
 
-static esp_err_t w5500_mac_add_mac_filter(esp_eth_mac_t* mac, uint8_t* addr) {
+static esp_err_t
+w5500_mac_add_mac_filter(esp_eth_mac_t* mac, uint8_t* addr) {
   (void)mac;
   (void)addr;
   return ESP_ERR_NOT_SUPPORTED;
 }
 
-static esp_err_t w5500_mac_rm_mac_filter(esp_eth_mac_t* mac, uint8_t* addr) {
+static esp_err_t
+w5500_mac_rm_mac_filter(esp_eth_mac_t* mac, uint8_t* addr) {
   (void)mac;
   (void)addr;
   return ESP_ERR_NOT_SUPPORTED;
 }
 
 // link/speed/duplex state
-static esp_err_t w5500_mac_set_speed(esp_eth_mac_t* mac, eth_speed_t speed) {
+static esp_err_t
+w5500_mac_set_speed(esp_eth_mac_t* mac, eth_speed_t speed) {
   if (mac == NULL) {
     return ESP_ERR_INVALID_ARG;
   }
@@ -322,7 +348,8 @@ static esp_err_t w5500_mac_set_speed(esp_eth_mac_t* mac, eth_speed_t speed) {
   return ESP_OK;
 }
 
-static esp_err_t w5500_mac_set_duplex(esp_eth_mac_t* mac, eth_duplex_t duplex) {
+static esp_err_t
+w5500_mac_set_duplex(esp_eth_mac_t* mac, eth_duplex_t duplex) {
   if (mac == NULL) {
     return ESP_ERR_INVALID_ARG;
   }
@@ -332,7 +359,8 @@ static esp_err_t w5500_mac_set_duplex(esp_eth_mac_t* mac, eth_duplex_t duplex) {
   return ESP_OK;
 }
 
-static esp_err_t w5500_mac_set_link(esp_eth_mac_t* mac, eth_link_t link) {
+static esp_err_t
+w5500_mac_set_link(esp_eth_mac_t* mac, eth_link_t link) {
   if (mac == NULL) {
     return ESP_ERR_INVALID_ARG;
   }
@@ -343,31 +371,36 @@ static esp_err_t w5500_mac_set_link(esp_eth_mac_t* mac, eth_link_t link) {
 }
 
 // Optional hooks
-static esp_err_t w5500_mac_set_promiscuous(esp_eth_mac_t* mac, bool enable) {
+static esp_err_t
+w5500_mac_set_promiscuous(esp_eth_mac_t* mac, bool enable) {
   (void)mac;
   (void)enable;
   return ESP_OK;
 }
 
-static esp_err_t w5500_mac_set_all_multicast(esp_eth_mac_t* mac, bool enable) {
+static esp_err_t
+w5500_mac_set_all_multicast(esp_eth_mac_t* mac, bool enable) {
   (void)mac;
   (void)enable;
   return ESP_OK;
 }
 
-static esp_err_t w5500_mac_enable_flow_ctrl(esp_eth_mac_t* mac, bool enable) {
+static esp_err_t
+w5500_mac_enable_flow_ctrl(esp_eth_mac_t* mac, bool enable) {
   (void)mac;
   (void)enable;
   return ESP_OK;
 }
 
-static esp_err_t w5500_mac_set_peer_pause_ability(esp_eth_mac_t* mac, uint32_t ability) {
+static esp_err_t
+w5500_mac_set_peer_pause_ability(esp_eth_mac_t* mac, uint32_t ability) {
   (void)mac;
   (void)ability;
   return ESP_OK;
 }
 
-static esp_err_t w5500_mac_custom_ioctl(esp_eth_mac_t* mac, int cmd, void* data) {
+static esp_err_t
+w5500_mac_custom_ioctl(esp_eth_mac_t* mac, int cmd, void* data) {
   (void)mac;
   (void)cmd;
   (void)data;
@@ -375,7 +408,8 @@ static esp_err_t w5500_mac_custom_ioctl(esp_eth_mac_t* mac, int cmd, void* data)
 }
 
 // Destructor
-static esp_err_t w5500_mac_del(esp_eth_mac_t* mac) {
+static esp_err_t
+w5500_mac_del(esp_eth_mac_t* mac) {
   if (mac == NULL) {
     return ESP_ERR_INVALID_ARG;
   }
@@ -464,7 +498,8 @@ w5500_mac_rx_task(void* args) {
 }
 
 // Helper receive exactly one frame
-static esp_err_t w5500_mac_receive_one_frame(w5500_eth_mac_t* ext_mac, uint8_t* buf, uint32_t* length) {
+static esp_err_t
+w5500_mac_receive_one_frame(w5500_eth_mac_t* ext_mac, uint8_t* buf, uint32_t* length) {
   uint8_t sr = 0;
   uint16_t rx_size = 0;
   uint16_t rx_rd = 0;
