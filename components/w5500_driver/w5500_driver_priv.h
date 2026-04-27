@@ -32,8 +32,8 @@
 #define W5500_REG_SIR         0x0017
 #define W5500_REG_SIMR        0x0018
 
-#define W5500_SREG_SN_IR      0x0002
-#define W5500_SREG_SN_IMR     0x002C
+#define W5500_SREG_SN_IR          0x0002
+#define W5500_SREG_SN_IMR         0x002C
 #define W5500_SREG_SN_MR          0x0000
 #define W5500_SREG_SN_CR          0x0001 // command register
 #define W5500_SREG_SN_SR          0x0003 // status register
@@ -72,6 +72,7 @@
 #define W5500_SN_MR_MACRAW        0x04 // Value for setting MACRAW in SN_MR
 
 #define W5500_SOCKET0_RX_SCRATCH_SIZE 2048
+#define W5500_REG_SHAR                0x0009 // source hardware address register
 
 typedef struct {
   w5500_driver_config_t cfg;
@@ -145,4 +146,7 @@ esp_err_t w5500_read_sn_tx_wr(uint8_t socket_num, uint16_t* value);
 esp_err_t w5500_write_sn_rx_rd(uint8_t socket_num, uint16_t value);
 esp_err_t w5500_write_sn_tx_wr(uint8_t socket_num, uint16_t value);
 
+esp_err_t w5500_write_phycfgr(uint8_t phycfgr);
+esp_err_t w5500_read_shar(uint8_t mac[6]);
+esp_err_t w5500_write_shar(const uint8_t mac[6]);
 #endif

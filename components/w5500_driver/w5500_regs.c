@@ -275,3 +275,24 @@ esp_err_t
 w5500_write_sn_tx_wr(uint8_t socket_num, uint16_t value) {
   return w5500_reg_write16(W5500_SREG_SN_TX_WR, W5500_BSB_SOCK_REG(socket_num), value);
 }
+
+esp_err_t
+w5500_write_phycfgr(uint8_t phycfgr) {
+  return w5500_reg_write8(W5500_REG_PHYCFGR, W5500_BSB_COMMON, phycfgr);
+}
+
+esp_err_t
+w5500_read_shar(uint8_t mac[6]) {
+  if (mac == NULL) {
+    return ESP_ERR_INVALID_ARG;
+  }
+  return w5500_spi_read(W5500_REG_SHAR, W5500_BSB_COMMON, mac, 6);
+}
+
+esp_err_t
+w5500_write_shar(const uint8_t mac[6]) {
+  if (mac == NULL) {
+    return ESP_ERR_INVALID_ARG;
+  }
+  return w5500_spi_write(W5500_REG_SHAR, W5500_BSB_COMMON, mac, 6);
+}
