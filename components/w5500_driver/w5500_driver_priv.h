@@ -96,6 +96,14 @@ esp_err_t w5500_spi_deinit(void);
 esp_err_t w5500_spi_read(uint16_t addr, uint8_t block_select, uint8_t* read_bytes, size_t len);
 esp_err_t w5500_spi_write(uint16_t addr, uint8_t block_select, const uint8_t* data, size_t len);
 
+// ISR
+esp_err_t w5500_driver_service_interrupts(void);
+
+// MACRAW
+esp_err_t w5500_socket0_open_macraw(void);
+esp_err_t w5500_socket0_send_raw_frame(const uint8_t* frame, size_t len);
+esp_eth_mac_t* w5500_eth_mac_new(const eth_mac_config_t* config);
+
 /* Register helpers */
 esp_err_t w5500_reg_read8(uint16_t addr, uint8_t block_select, uint8_t *value);
 esp_err_t w5500_reg_read16(uint16_t addr, uint8_t block_select, uint16_t* value);

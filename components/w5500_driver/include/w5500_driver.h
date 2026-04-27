@@ -4,9 +4,10 @@
 #include <stdint.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-
 #include "driver/spi_master.h"
+
 #include "esp_err.h"
+#include "esp_eth_mac.h"
 
 typedef struct {
   spi_host_device_t spi_host;
@@ -34,8 +35,4 @@ int w5500_driver_get_interrupt_level(void);
 uint32_t w5500_driver_get_interrupt_count(void);
 
 esp_err_t w5500_interrupts_enable_socket0(void);
-esp_err_t w5500_driver_service_interrupts(void);
-
-esp_err_t w5500_socket0_open_macraw(void);
-esp_err_t w5500_socket0_send_raw_frame(const uint8_t* frame, size_t len);
 #endif

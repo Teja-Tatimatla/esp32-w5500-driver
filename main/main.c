@@ -12,8 +12,6 @@
 
 static const char *TAG = "main";
 
-static void w5500_interrupt_handler_task(void* args);
-
 void
 app_main(void) {
   esp_err_t err;
@@ -61,21 +59,4 @@ app_main(void) {
     ESP_LOGI(TAG, "W5500 SPI/register path looks healthy");
   }
 
-  ESP_ERROR_CHECK(w5500_socket0_open_macraw());
-
-  xTaskCreate(w5500_interrupt_handler_task, "w5500_interrupt_handler_task", 4096, NULL, 10, NULL);
-}
-
-static void
-w5500_interrupt_handler_task(void* args) {
-  (void)args;
-
-  ESP_ERROR_CHECK(w5500_driver_register_interrupt_task(xTaskGetCurrentTaskHandle()));
-  ESP_ERROR_CHECK(w5500_interrupts_enable_socket0());
-  ESP_LOGI(TAG, "INT wait task registered, initial INTn level=%d", w5500_driver_get_interrupt_level());
-
-  while(1) {
-    ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-    ESP_ERROR_CHECK(w5500_driver_service_interrupts());
-  }
 }
