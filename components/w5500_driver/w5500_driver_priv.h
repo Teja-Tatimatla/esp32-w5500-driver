@@ -4,10 +4,11 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
-
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "freertos/semphr.h"
 #include "driver/spi_master.h"
+
 #include "driver/gpio.h"
 #include "esp_err.h"
 #include "w5500_driver.h"
@@ -25,6 +26,7 @@
 #define W5500_REG_MR         0x0000
 #define W5500_REG_PHYCFGR    0x002E
 #define W5500_REG_VERSIONR   0x0039
+#define W5500_REG_INTLEVEL   0x0013
 #define W5500_MR_RST         0x80
 
 #define W5500_REG_IR          0x0015
@@ -62,6 +64,7 @@
 #define W5500_SN_IR_RECV      (1u << 2)
 #define W5500_SN_IR_TIMEOUT   (1u << 3)
 #define W5500_SN_IR_SEND_OK   (1u << 4)
+#define W5500_SN_MR_MMB           0x20
 #define W5500_SN_MR_MFEN          0x80
 /*
  * mode register MAC filter enable
@@ -70,9 +73,7 @@
  * packets in the local network on the RX buffer.
  */
 #define W5500_SN_MR_MACRAW        0x04 // Value for setting MACRAW in SN_MR
-
-#define W5500_SOCKET0_RX_SCRATCH_SIZE 2048
-#define W5500_REG_SHAR                0x0009 // source hardware address register
+#define W5500_REG_SHAR            0x0009 // source hardware address register
 
 typedef struct {
   w5500_driver_config_t cfg;
@@ -81,12 +82,8 @@ typedef struct {
   bool gpio_isr_service_installed;
   bool gpio_handler_installed;
   TaskHandle_t interrupt_task_handle;
-  volatile uint32_t interrupt_isr_count;
-  uint8_t socket0_rx_scratch[W5500_SOCKET0_RX_SCRATCH_SIZE];
   bool socket0_tx_in_flight;
-  uint16_t socket0_last_tx_len;
-  uint32_t socket0_tx_complete_count;
-  uint32_t socket0_tx_timeout_count;
+  SemaphoreHandle_t spi_lock;
 } w5500_context_t;
 
 extern w5500_context_t w5500_global_context;

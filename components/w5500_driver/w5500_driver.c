@@ -1,35 +1,30 @@
 #include <stdint.h>
-#include <inttypes.h>
+#include <stdbool.h>
 #include "freertos/FreeRTOS.h"
-#include "freertos/projdefs.h"
 #include "freertos/task.h"
-
 #include "driver/gpio.h"
 #include "esp_attr.h"
 #include "esp_err.h"
-#include "esp_intr_alloc.h"
-#include "soc/gpio_num.h"
-#include "w5500_driver_priv.h"
-#include "esp_check.h"
 #include "esp_log.h"
 
+#include "w5500_driver_priv.h"
 
 static const char *TAG = "w5500_driver";
 
-// static esp_err_t w5500_socket0_drain_rx(void);
+static esp_err_t w5500_socket0_update_tx_completion(void);
+static void w5500_driver_notify_interrupt_task_if_pending(void);
 
 static void IRAM_ATTR
 w5500_gpio_isr_handler(void* args) {
   (void)args;
 
   BaseType_t yield_required = pdFALSE;
-  w5500_global_context.interrupt_isr_count++;
 
-  if(w5500_global_context.interrupt_task_handle != NULL) {
+  if (w5500_global_context.interrupt_task_handle != NULL) {
     vTaskNotifyGiveFromISR(w5500_global_context.interrupt_task_handle, &yield_required);
   }
 
-  if(yield_required == pdTRUE) {
+  if (yield_required == pdTRUE) {
     portYIELD_FROM_ISR();
   }
 }
@@ -193,7 +188,6 @@ w5500_driver_register_interrupt_task(TaskHandle_t task_handle) {
   }
 
   w5500_global_context.interrupt_task_handle = task_handle;
-  w5500_global_context.interrupt_isr_count = 0;
 
   err = gpio_isr_handler_add((gpio_num_t)w5500_global_context.cfg.pin_int, w5500_gpio_isr_handler, NULL);
   if(err != ESP_OK) {
@@ -211,6 +205,8 @@ w5500_driver_register_interrupt_task(TaskHandle_t task_handle) {
     return err;
   }
 
+  w5500_driver_notify_interrupt_task_if_pending();
+
   return ESP_OK;
 }
 
@@ -220,7 +216,10 @@ w5500_driver_unregister_interrupt_task(void) {
     return ESP_ERR_INVALID_STATE;
   }
 
-  ESP_ERROR_CHECK(gpio_intr_disable((gpio_num_t)w5500_global_context.cfg.pin_int));
+  esp_err_t err = gpio_intr_disable((gpio_num_t)w5500_global_context.cfg.pin_int);
+  if (err != ESP_OK) {
+    return err;
+  }
 
   if(w5500_global_context.gpio_handler_installed) {
     ESP_ERROR_CHECK(gpio_isr_handler_remove((gpio_num_t)w5500_global_context.cfg.pin_int));
@@ -231,14 +230,6 @@ w5500_driver_unregister_interrupt_task(void) {
   return ESP_OK;
 }
 
-esp_err_t
-w5500_driver_enable_interrupt_gpio(void) {
-  if(!w5500_global_context.initialized || w5500_global_context.cfg.pin_int < 0) {
-    return ESP_ERR_INVALID_STATE;
-  }
-
-  return gpio_intr_enable((gpio_num_t)w5500_global_context.cfg.pin_int);
-}
 
 esp_err_t
 w5500_driver_disable_interrupt_gpio(void) {
@@ -258,10 +249,6 @@ w5500_driver_get_interrupt_level(void) {
   return gpio_get_level((gpio_num_t)w5500_global_context.cfg.pin_int);
 }
 
-uint32_t
-w5500_driver_get_interrupt_count(void) {
-  return w5500_global_context.interrupt_isr_count;
-}
 
 esp_err_t
 w5500_interrupts_enable_socket0(void) {
@@ -273,17 +260,22 @@ w5500_interrupts_enable_socket0(void) {
   }
 
   err = w5500_clear_ir(0xF0);
-  if(err != ESP_OK){
+  if (err != ESP_OK) {
     return err;
   }
 
   err = w5500_clear_sn_ir(0, 0x1F);
-  if(err != ESP_OK) {
+  if (err != ESP_OK) {
     return err;
   }
 
-  err = w5500_write_sn_imr(0, W5500_SN_IR_SEND_OK | W5500_SN_IR_TIMEOUT | W5500_SN_IR_RECV);
-  if(err != ESP_OK) {
+  err = w5500_write_sn_imr(0, W5500_SN_IR_RECV);
+  if (err != ESP_OK) {
+    return err;
+  }
+
+  err = w5500_reg_write16(W5500_REG_INTLEVEL, W5500_BSB_COMMON, 0xFFFF);
+  if (err != ESP_OK) {
     return err;
   }
 
@@ -291,6 +283,8 @@ w5500_interrupts_enable_socket0(void) {
   if (err != ESP_OK) {
     return err;
   }
+
+  w5500_driver_notify_interrupt_task_if_pending();
 
   return ESP_OK;
 }
@@ -302,55 +296,45 @@ w5500_handle_common_ir(uint8_t ir) {
     return ESP_OK;
   }
 
-  ESP_LOGW(TAG, "Common IR = 0x%02X", ir);
   return w5500_clear_ir(ir & 0xF0);
 }
 
 static esp_err_t
 w5500_handle_socket0_ir(uint8_t sn_ir) {
-  if(sn_ir == 0) {
+  if (sn_ir == 0) {
     return ESP_OK;
   }
 
-  if(sn_ir & W5500_SN_IR_RECV) {
-    ESP_LOGI(TAG, "S0_IR: RECV");
+  uint8_t clear_mask = 0;
 
-    /*
-    esp_err_t err = w5500_socket0_drain_rx();
-    if(err != ESP_OK) {
+  if (sn_ir & W5500_SN_IR_RECV) {
+    sn_ir &= (uint8_t)~W5500_SN_IR_RECV;
+  }
+
+  if (sn_ir & (W5500_SN_IR_SEND_OK | W5500_SN_IR_TIMEOUT)) {
+    esp_err_t err = w5500_socket0_update_tx_completion();
+    if (err != ESP_OK && err != ESP_ERR_TIMEOUT) {
       return err;
     }
-    */
+
+    sn_ir &= (uint8_t)~(W5500_SN_IR_SEND_OK | W5500_SN_IR_TIMEOUT);
   }
 
-  if(sn_ir & W5500_SN_IR_SEND_OK) {
-    if(w5500_global_context.socket0_tx_in_flight) {
-      w5500_global_context.socket0_tx_in_flight = false;
-      w5500_global_context.socket0_tx_complete_count++;
-      ESP_LOGI(TAG, "S0_IR: SEND_OK (len=%zu, total=%" PRIu32 ")", (size_t) w5500_global_context.socket0_last_tx_len, w5500_global_context.socket0_tx_complete_count);
-      w5500_global_context.socket0_last_tx_len = 0;
-    } else {
-      ESP_LOGW(TAG, "S0_IR: SEND_OK with no TX in flight");
-    }
-  }
-
-  if(sn_ir & W5500_SN_IR_DISCON) {
+  if (sn_ir & W5500_SN_IR_DISCON) {
     ESP_LOGI(TAG, "S0_IR: DISCON");
+    clear_mask |= W5500_SN_IR_DISCON;
   }
 
-  if(sn_ir & W5500_SN_IR_CON) {
+  if (sn_ir & W5500_SN_IR_CON) {
     ESP_LOGI(TAG, "S0_IR: CON");
+    clear_mask |= W5500_SN_IR_CON;
   }
 
-  if (sn_ir & W5500_SN_IR_TIMEOUT) {
-    w5500_global_context.socket0_tx_timeout_count++;
-    ESP_LOGW(TAG, "S0_IR: TIMEOUT (total=%" PRIu32 ")",w5500_global_context.socket0_tx_timeout_count);
-
-    w5500_global_context.socket0_tx_in_flight = false;
-    w5500_global_context.socket0_last_tx_len = 0;
+  if (clear_mask != 0) {
+    return w5500_clear_sn_ir(0, clear_mask);
   }
 
-  return w5500_clear_sn_ir(0, sn_ir & 0x1F);
+  return ESP_OK;
 }
 
 esp_err_t
@@ -385,9 +369,17 @@ w5500_driver_service_interrupts(void) {
         return err;
       }
 
+      if (s0_ir == 0) {
+        return ESP_OK;
+      }
+
       err = w5500_handle_socket0_ir(s0_ir);
       if(err != ESP_OK) {
         return err;
+      }
+
+      if (s0_ir & W5500_SN_IR_RECV) {
+        return ESP_OK;
       }
 
       continue;
@@ -405,72 +397,6 @@ w5500_driver_service_interrupts(void) {
   }
 }
 
-/*
-static esp_err_t
-w5500_socket0_drain_rx(void) {
-  uint8_t sr = 0;
-  esp_err_t err = w5500_read_sn_sr(0, &sr);
-  if(err != ESP_OK) {
-    return err;
-  }
-
-  if(sr != W5500_SOCK_MACRAW) {
-    ESP_LOGE(TAG, "Socket0 not in MACRAW mode (Sn_SR=0x%02X)", sr);
-    return ESP_ERR_INVALID_STATE;
-  }
-
-  while(1) {
-    uint16_t rx_size = 0;
-    uint16_t rx_rd = 0;
-
-    err = w5500_read_sn_rx_rsr_stable(0, &rx_size);
-    if(err != ESP_OK) {
-      return err;
-    }
-
-    if(rx_size == 0) {
-      return ESP_OK;
-    }
-
-    if(rx_size > sizeof(w5500_global_context.socket0_rx_scratch)) {
-      ESP_LOGE(TAG, "RX drain too large: %zu bytes", (size_t)rx_size);
-      return ESP_ERR_INVALID_SIZE;
-    }
-
-    err = w5500_read_sn_rx_rd(0, &rx_rd);
-    if(err != ESP_OK) {
-      return err;
-    }
-
-    err = w5500_read_rx_buffer(0, rx_rd, w5500_global_context.socket0_rx_scratch, rx_size);
-    if(err != ESP_OK) {
-      return err;
-    }
-
-    rx_rd = (uint16_t)(rx_rd + rx_size);
-
-    err = w5500_write_sn_rx_rd(0, rx_rd);
-    if(err != ESP_OK) {
-      return err;
-    }
-
-    err = w5500_write_sn_cr(0, W5500_SN_CR_RECV);
-    if(err != ESP_OK) {
-      return err;
-    }
-
-    err = w5500_wait_for_sn_cr_clear(0, pdMS_TO_TICKS(100));
-    if(err != ESP_OK) {
-      return err;
-    }
-
-    ESP_LOGI(TAG, "Drained %zu RX bytes from socket0", (size_t)rx_size);
-    size_t preview = rx_size < 64 ? rx_size : 64;
-    ESP_LOG_BUFFER_HEXDUMP(TAG, w5500_global_context.socket0_rx_scratch, preview, ESP_LOG_INFO);
-  }
-}
-*/
-
 esp_err_t
 w5500_socket0_send_raw_frame(const uint8_t* frame, size_t len) {
   uint8_t sr = 0;
@@ -478,70 +404,69 @@ w5500_socket0_send_raw_frame(const uint8_t* frame, size_t len) {
   uint16_t tx_wr = 0;
   esp_err_t err;
 
-  if(frame == NULL || len == 0) {
+  if (frame == NULL || len == 0) {
     return ESP_ERR_INVALID_ARG;
   }
 
-  err = w5500_read_sn_sr(0, &sr);
-  if(err != ESP_OK) {
+  err = w5500_socket0_update_tx_completion();
+  if (err != ESP_OK && err != ESP_ERR_TIMEOUT) {
     return err;
   }
 
-  if(sr != W5500_SOCK_MACRAW) {
+  err = w5500_read_sn_sr(0, &sr);
+  if (err != ESP_OK) {
+    return err;
+  }
+
+  if (sr != W5500_SOCK_MACRAW) {
     ESP_LOGE(TAG, "Socket0 not in MACRAW mode (Sn_SR=0x%02X)", sr);
     return ESP_ERR_INVALID_STATE;
   }
 
-  if(w5500_global_context.socket0_tx_in_flight) {
-    ESP_LOGW(TAG, "Socket0 TX already in flight");
-    return ESP_ERR_INVALID_STATE;
-  }
-
   err = w5500_read_sn_tx_fsr_stable(0, &tx_fsr);
-  if(err != ESP_OK) {
+  if (err != ESP_OK) {
     return err;
   }
 
-  if(tx_fsr < len) {
-    ESP_LOGW(TAG, "Not enough TX space: need=%zu free%zu", (size_t)len, (size_t)tx_fsr);
+  if (tx_fsr < len) {
     return ESP_ERR_NO_MEM;
   }
 
   err = w5500_read_sn_tx_wr(0, &tx_wr);
-  if(err != ESP_OK) {
+  if (err != ESP_OK) {
     return err;
   }
 
   err = w5500_write_tx_buffer(0, tx_wr, frame, len);
-  if(err != ESP_OK) {
+  if (err != ESP_OK) {
     return err;
   }
 
   tx_wr = (uint16_t)(tx_wr + len);
 
   err = w5500_write_sn_tx_wr(0, tx_wr);
-  if(err != ESP_OK) {
+  if (err != ESP_OK) {
     return err;
   }
 
+  /*
+   * Mark TX as in-flight before SEND.
+   * SEND_OK may happen quickly after the command is accepted.
+   */
   w5500_global_context.socket0_tx_in_flight = true;
-  w5500_global_context.socket0_last_tx_len = (uint16_t)len;
 
   err = w5500_write_sn_cr(0, W5500_SN_CR_SEND);
-  if(err != ESP_OK) {
+  if (err != ESP_OK) {
     w5500_global_context.socket0_tx_in_flight = false;
-    w5500_global_context.socket0_last_tx_len = 0;
     return err;
   }
 
   err = w5500_wait_for_sn_cr_clear(0, pdMS_TO_TICKS(100));
-  if(err != ESP_OK) {
+  if (err != ESP_OK) {
     w5500_global_context.socket0_tx_in_flight = false;
-    w5500_global_context.socket0_last_tx_len = 0;
     return err;
   }
 
-  ESP_LOGI(TAG, "Queued socket0 TX of %zu bytes", (size_t)len);
   return ESP_OK;
 }
 
@@ -561,50 +486,105 @@ w5500_socket0_open_macraw(void) {
   }
 
   err = w5500_clear_sn_ir(0, 0x1F);
-  if(err != ESP_OK) {
+  if (err != ESP_OK) {
     return err;
   }
 
-  err = w5500_write_sn_rxbuf_size(0, 2);
-  if(err != ESP_OK) {
-    return err;
+  for (uint8_t sock = 0; sock < 8; sock++) {
+    uint8_t size_kb = (sock == 0) ? 16 : 0;
+
+    err = w5500_write_sn_rxbuf_size(sock, size_kb);
+    if (err != ESP_OK) {
+      return err;
+    }
+
+    err = w5500_write_sn_txbuf_size(sock, size_kb);
+    if (err != ESP_OK) {
+      return err;
+    }
   }
 
-  err = w5500_write_sn_txbuf_size(0, 2);
-  if(err != ESP_OK) {
-    return err;
-  }
-
-  err = w5500_write_sn_mr(0, W5500_SN_MR_MACRAW | W5500_SN_MR_MFEN);
-  if(err != ESP_OK) {
+  err = w5500_write_sn_mr(0, W5500_SN_MR_MACRAW | W5500_SN_MR_MFEN | W5500_SN_MR_MMB);
+  if (err != ESP_OK) {
     return err;
   }
 
   err = w5500_write_sn_cr(0, W5500_SN_CR_OPEN);
-  if(err != ESP_OK) {
+  if (err != ESP_OK) {
     return err;
   }
 
   err = w5500_wait_for_sn_cr_clear(0, pdMS_TO_TICKS(100));
-  if(err != ESP_OK) {
+  if (err != ESP_OK) {
     return err;
   }
 
   err = w5500_read_sn_sr(0, &sr);
-  if(err != ESP_OK) {
+  if (err != ESP_OK) {
     return err;
   }
 
-  if(sr != W5500_SOCK_MACRAW) {
+  if (sr != W5500_SOCK_MACRAW) {
     ESP_LOGE(TAG, "Socket0 failed to enter MACRAW, Sn_SR=0x%02X", sr);
     return ESP_ERR_INVALID_RESPONSE;
   }
 
   w5500_global_context.socket0_tx_in_flight = false;
-  w5500_global_context.socket0_last_tx_len = 0;
-  w5500_global_context.socket0_tx_complete_count = 0;
-  w5500_global_context.socket0_tx_timeout_count = 0;
 
   ESP_LOGI(TAG, "Socket opened in MACRAW mode");
   return ESP_OK;
+}
+
+static esp_err_t
+w5500_socket0_update_tx_completion(void) {
+  uint8_t sn_ir = 0;
+
+  esp_err_t err = w5500_read_sn_ir(0, &sn_ir);
+  if (err != ESP_OK) {
+    return err;
+  }
+
+  if (sn_ir & W5500_SN_IR_RECV) {
+    w5500_driver_notify_interrupt_task_if_pending();
+  }
+
+  if (sn_ir & W5500_SN_IR_SEND_OK) {
+    err = w5500_clear_sn_ir(0, W5500_SN_IR_SEND_OK);
+    if (err != ESP_OK) {
+      return err;
+    }
+
+    w5500_global_context.socket0_tx_in_flight = false;
+  }
+
+  if (sn_ir & W5500_SN_IR_TIMEOUT) {
+    err = w5500_clear_sn_ir(0, W5500_SN_IR_TIMEOUT);
+    if (err != ESP_OK) {
+      return err;
+    }
+
+    w5500_global_context.socket0_tx_in_flight = false;
+    return ESP_ERR_TIMEOUT;
+  }
+
+  return ESP_OK;
+}
+
+static void
+w5500_driver_notify_interrupt_task_if_pending(void) {
+  if (!w5500_global_context.initialized) {
+    return;
+  }
+
+  if (w5500_global_context.cfg.pin_int < 0) {
+    return;
+  }
+
+  if (w5500_global_context.interrupt_task_handle == NULL) {
+    return;
+  }
+
+  if (gpio_get_level((gpio_num_t)w5500_global_context.cfg.pin_int) == 0) {
+    xTaskNotifyGive(w5500_global_context.interrupt_task_handle);
+  }
 }

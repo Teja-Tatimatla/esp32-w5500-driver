@@ -1,8 +1,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
-
 #include "esp_check.h"
+#include "esp_err.h"
 #include "esp_eth.h"
 #include "esp_eth_phy.h"
 #include "esp_log.h"
@@ -187,13 +187,15 @@ w5500_phy_reset_hw(esp_eth_phy_t* phy) {
     return ESP_ERR_INVALID_ARG;
   }
 
+  /*
   w5500_eth_phy_t* ext_phy = w5500_phy_from_parent(phy);
-
   if (ext_phy->config.reset_gpio_num < 0) {
     return ESP_OK;
   }
 
   return w5500_driver_hard_reset();
+  */
+  return ESP_OK;
 }
 
 static esp_err_t
@@ -202,7 +204,10 @@ w5500_phy_reset(esp_eth_phy_t* phy) {
     return ESP_ERR_INVALID_ARG;
   }
 
+  /*
   return w5500_driver_soft_reset();
+  */
+  return ESP_OK;
 }
 
 static esp_err_t
@@ -338,8 +343,26 @@ w5500_phy_get_link(esp_eth_phy_t* phy) {
     }
 
     if (ext_phy->link != ETH_LINK_UP) {
+      ESP_LOGI(TAG, "link transition: DOWN -> UP");
+
+      esp_err_t err = w5500_socket0_open_macraw();
+      if(err != ESP_OK) {
+        ESP_LOGE(TAG, "link up: failed to open socket0 MACRAW");
+        return err;
+      }
+
+      err = w5500_interrupts_enable_socket0();
+      if(err != ESP_OK) {
+        ESP_LOGE(TAG, "link up: failed to enable socket0 interrupts");
+        return err;
+      }
+
+      if (w5500_global_context.interrupt_task_handle != NULL) {
+        xTaskNotifyGive(w5500_global_context.interrupt_task_handle);
+      }
+
       ext_phy->link = ETH_LINK_UP;
-      esp_err_t err = ext_phy->mediator->on_state_changed(ext_phy->mediator,  ETH_STATE_LINK,  (void *)(uintptr_t)ETH_LINK_UP);
+      err = ext_phy->mediator->on_state_changed(ext_phy->mediator,  ETH_STATE_LINK,  (void *)(uintptr_t)ETH_LINK_UP);
 
       if (err != ESP_OK) {
         ESP_LOGE(TAG, "notify link up failed");

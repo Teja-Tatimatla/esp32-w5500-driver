@@ -1,10 +1,9 @@
+#include <stdint.h>
 #include "esp_err.h"
-#include "w5500_driver_priv.h"
-#include "esp_check.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include <stdint.h>
 
+#include "w5500_driver_priv.h"
 
 esp_err_t
 w5500_reg_read8(uint16_t addr, uint8_t block_select, uint8_t *value) {
