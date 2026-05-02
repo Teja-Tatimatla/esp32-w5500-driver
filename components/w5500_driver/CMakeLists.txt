@@ -1,16 +1,16 @@
 idf_component_register(
-    SRCS
-        "w5500_driver.c"
-        "w5500_spi.c"
-        "w5500_regs.c"
-        "w5500_mac.c"
-        "w5500_phy.c"
-    INCLUDE_DIRS
-        "include"
-    REQUIRES
-        esp_common
-        esp_driver_spi
-        esp_eth
-    PRIV_REQUIRES
-        esp_driver_gpio
+  SRCS
+    "w5500_driver.c"
+    "w5500_spi.c"
+    "w5500_regs.c"
+    "w5500_mac.c"
+    "w5500_phy.c"
+  INCLUDE_DIRS
+    "include"
+  REQUIRES
+    esp_common
+    esp_driver_spi
+    esp_eth
+  PRIV_REQUIRES
+    esp_driver_gpio
 )

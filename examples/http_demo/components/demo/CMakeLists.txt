@@ -1,0 +1,11 @@
+idf_component_register(
+  SRCS
+    "demo.c"
+    "demo_data.c"
+    "demo_http_server.c"
+    "demo_art_client.c"
+  INCLUDE_DIRS
+    "include"
+  REQUIRES
+    esp_netif
+)
