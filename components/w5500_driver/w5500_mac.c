@@ -27,9 +27,6 @@ typedef struct {
   eth_mac_config_t config;
   TaskHandle_t rx_task_handle;
   bool started;
-  eth_link_t link;
-  eth_speed_t speed;
-  eth_duplex_t duplex;
   uint8_t mac_addr[6];
 } w5500_eth_mac_t;
 
@@ -92,9 +89,6 @@ w5500_eth_mac_new(const eth_mac_config_t* config) {
   }
 
   ext_mac->config = *config;
-  ext_mac->link = ETH_LINK_DOWN;
-  ext_mac->speed = ETH_SPEED_10M;
-  ext_mac->duplex = ETH_DUPLEX_HALF;
 
   // Temperory locally administered address
   ext_mac->mac_addr[0] = 0x02;
@@ -426,34 +420,31 @@ w5500_mac_rm_mac_filter(esp_eth_mac_t* mac, uint8_t* addr) {
 // link/speed/duplex state
 static esp_err_t
 w5500_mac_set_speed(esp_eth_mac_t* mac, eth_speed_t speed) {
+  (void)speed;
   if (mac == NULL) {
     return ESP_ERR_INVALID_ARG;
   }
 
-  w5500_eth_mac_t* ext_mac = w5500_mac_from_parent(mac);
-  ext_mac->speed = speed;
   return ESP_OK;
 }
 
 static esp_err_t
 w5500_mac_set_duplex(esp_eth_mac_t* mac, eth_duplex_t duplex) {
+  (void)duplex;
   if (mac == NULL) {
     return ESP_ERR_INVALID_ARG;
   }
 
-  w5500_eth_mac_t* ext_mac = w5500_mac_from_parent(mac);
-  ext_mac->duplex = duplex;
   return ESP_OK;
 }
 
 static esp_err_t
 w5500_mac_set_link(esp_eth_mac_t* mac, eth_link_t link) {
+  (void)link;
   if (mac == NULL) {
     return ESP_ERR_INVALID_ARG;
   }
 
-  w5500_eth_mac_t* ext_mac = w5500_mac_from_parent(mac);
-  ext_mac->link = link;
   return ESP_OK;
 }
 

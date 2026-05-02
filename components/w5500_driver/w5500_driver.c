@@ -449,21 +449,13 @@ w5500_socket0_send_raw_frame(const uint8_t* frame, size_t len) {
     return err;
   }
 
-  /*
-   * Mark TX as in-flight before SEND.
-   * SEND_OK may happen quickly after the command is accepted.
-   */
-  w5500_global_context.socket0_tx_in_flight = true;
-
   err = w5500_write_sn_cr(0, W5500_SN_CR_SEND);
   if (err != ESP_OK) {
-    w5500_global_context.socket0_tx_in_flight = false;
     return err;
   }
 
   err = w5500_wait_for_sn_cr_clear(0, pdMS_TO_TICKS(100));
   if (err != ESP_OK) {
-    w5500_global_context.socket0_tx_in_flight = false;
     return err;
   }
 
@@ -529,8 +521,6 @@ w5500_socket0_open_macraw(void) {
     return ESP_ERR_INVALID_RESPONSE;
   }
 
-  w5500_global_context.socket0_tx_in_flight = false;
-
   ESP_LOGI(TAG, "Socket opened in MACRAW mode");
   return ESP_OK;
 }
@@ -553,8 +543,6 @@ w5500_socket0_update_tx_completion(void) {
     if (err != ESP_OK) {
       return err;
     }
-
-    w5500_global_context.socket0_tx_in_flight = false;
   }
 
   if (sn_ir & W5500_SN_IR_TIMEOUT) {
@@ -562,8 +550,6 @@ w5500_socket0_update_tx_completion(void) {
     if (err != ESP_OK) {
       return err;
     }
-
-    w5500_global_context.socket0_tx_in_flight = false;
     return ESP_ERR_TIMEOUT;
   }
 

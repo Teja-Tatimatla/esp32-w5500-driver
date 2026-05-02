@@ -88,7 +88,7 @@ typedef struct {
 
 extern w5500_context_t w5500_global_context;
 
-/* SPI layer */
+// SPI layer
 esp_err_t w5500_spi_init(const w5500_driver_config_t* config);
 esp_err_t w5500_spi_deinit(void);
 esp_err_t w5500_spi_read(uint16_t addr, uint8_t block_select, uint8_t* read_bytes, size_t len);
@@ -102,7 +102,14 @@ esp_err_t w5500_socket0_open_macraw(void);
 esp_err_t w5500_socket0_send_raw_frame(const uint8_t* frame, size_t len);
 esp_eth_mac_t* w5500_eth_mac_new(const eth_mac_config_t* config);
 
-/* Register helpers */
+// Interrupts
+esp_err_t w5500_driver_register_interrupt_task(TaskHandle_t task_handle);
+esp_err_t w5500_driver_unregister_interrupt_task(void);
+esp_err_t w5500_driver_disable_interrupt_gpio(void);
+int w5500_driver_get_interrupt_level(void);
+esp_err_t w5500_interrupts_enable_socket0(void);
+
+// Register helpers
 esp_err_t w5500_reg_read8(uint16_t addr, uint8_t block_select, uint8_t *value);
 esp_err_t w5500_reg_read16(uint16_t addr, uint8_t block_select, uint16_t* value);
 esp_err_t w5500_reg_write8(uint16_t addr, uint8_t block_select, uint8_t value);
