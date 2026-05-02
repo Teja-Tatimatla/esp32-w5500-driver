@@ -8,4 +8,6 @@ idf_component_register(
     "include"
   REQUIRES
     esp_netif
+    esp_http_server
+    esp_timer
 )
