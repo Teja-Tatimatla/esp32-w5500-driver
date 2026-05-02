@@ -78,8 +78,6 @@ got_ip_event_handler(void* args, esp_event_base_t event_base, int32_t event_id, 
 
   ESP_LOGI(TAG, "Ethernet Got IP Address");
   ESP_LOGI(TAG, "ETHIP: " IPSTR, IP2STR(&ip_info->ip));
-  ESP_LOGI(TAG, "ETHMASK: " IPSTR, IP2STR(&ip_info->netmask));
-  ESP_LOGI(TAG, "ETHGW: " IPSTR, IP2STR(&ip_info->gw));
 
   if (app_context == NULL || app_context->eth_netif == NULL) {
     ESP_LOGE(TAG, "demo network ready skipped: missing app context");

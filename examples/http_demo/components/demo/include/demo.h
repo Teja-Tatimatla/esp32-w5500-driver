@@ -1,5 +1,5 @@
-#ifndef DEMO_H
-#define DEMO_H
+#ifndef HTTP_DEMO_H
+#define HTTP_DEMO_H
 
 #include <stdbool.h>
 
