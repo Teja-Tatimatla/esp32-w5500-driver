@@ -4,15 +4,20 @@
 #include "esp_netif.h"
 #include "esp_mac.h"
 
+#include "demo.h"
 #include "w5500_driver.h"
 
 static const char *TAG = "main";
 
+typedef struct {
+  esp_netif_t* eth_netif;
+} app_context_t;
+
 static void
 eth_event_handler(void* args, esp_event_base_t event_base, int32_t event_id, void* event_data) {
-  (void)args;
   (void)event_base;
 
+  app_context_t* app_context = (app_context_t *)args;
   esp_eth_handle_t eth_handle = *(esp_eth_handle_t *)event_data;
 
   switch(event_id) {
@@ -32,6 +37,13 @@ eth_event_handler(void* args, esp_event_base_t event_base, int32_t event_id, voi
 
     case ETHERNET_EVENT_DISCONNECTED:
       ESP_LOGI(TAG, "Ethernet Link Down");
+
+      if (app_context != NULL && app_context->eth_netif != NULL) {
+        esp_err_t err = demo_on_network_down();
+        if (err != ESP_OK) {
+          ESP_LOGE(TAG, "demo_on_network_down failed: %s", esp_err_to_name(err));
+        }
+      }
       break;
 
     case ETHERNET_EVENT_START:
@@ -40,6 +52,13 @@ eth_event_handler(void* args, esp_event_base_t event_base, int32_t event_id, voi
 
     case ETHERNET_EVENT_STOP:
       ESP_LOGI(TAG, "Ethernet Stopped");
+
+      if (app_context != NULL && app_context->eth_netif != NULL) {
+        esp_err_t err = demo_on_network_down();
+        if (err != ESP_OK) {
+          ESP_LOGE(TAG, "demo_on_network_down failed: %s", esp_err_to_name(err));
+        }
+      }
       break;
 
     default:
@@ -49,9 +68,10 @@ eth_event_handler(void* args, esp_event_base_t event_base, int32_t event_id, voi
 
 static void
 got_ip_event_handler(void* args, esp_event_base_t event_base, int32_t event_id, void* event_data) {
-  (void)args;
   (void)event_base;
   (void)event_id;
+
+  app_context_t* app_context = (app_context_t *)args;
 
   ip_event_got_ip_t* event = (ip_event_got_ip_t *)event_data;
   const esp_netif_ip_info_t* ip_info = &event->ip_info;
@@ -60,6 +80,16 @@ got_ip_event_handler(void* args, esp_event_base_t event_base, int32_t event_id, 
   ESP_LOGI(TAG, "ETHIP: " IPSTR, IP2STR(&ip_info->ip));
   ESP_LOGI(TAG, "ETHMASK: " IPSTR, IP2STR(&ip_info->netmask));
   ESP_LOGI(TAG, "ETHGW: " IPSTR, IP2STR(&ip_info->gw));
+
+  if (app_context == NULL || app_context->eth_netif == NULL) {
+    ESP_LOGE(TAG, "demo network ready skipped: missing app context");
+    return;
+  }
+
+  esp_err_t err = demo_on_network_ready(app_context->eth_netif);
+  if (err != ESP_OK) {
+    ESP_LOGE(TAG, "demo_on_network_ready failed: %s", esp_err_to_name(err));
+  }
 }
 
 void
@@ -103,8 +133,11 @@ app_main(void) {
   ESP_ERROR_CHECK(esp_netif_init());
   ESP_ERROR_CHECK(esp_event_loop_create_default());
 
-  ESP_ERROR_CHECK(esp_event_handler_register(ETH_EVENT, ESP_EVENT_ANY_ID, &eth_event_handler, NULL));
-  ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_ETH_GOT_IP, &got_ip_event_handler, NULL));
+  ESP_ERROR_CHECK(demo_init());
+  static app_context_t app_context = {0};
+
+  ESP_ERROR_CHECK(esp_event_handler_register(ETH_EVENT, ESP_EVENT_ANY_ID, &eth_event_handler, &app_context));
+  ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_ETH_GOT_IP, &got_ip_event_handler, &app_context));
 
   eth_mac_config_t mac_config = ETH_MAC_DEFAULT_CONFIG();
   mac_config.rx_task_stack_size = 4096;
@@ -144,6 +177,7 @@ app_main(void) {
     ESP_LOGE(TAG, "esp_eth_new_netif_glue failed");
     return;
   }
+  app_context.eth_netif = eth_netif;
 
   ESP_ERROR_CHECK(esp_netif_attach(eth_netif, glue));
 
