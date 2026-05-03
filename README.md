@@ -4,6 +4,7 @@ Custom W5500 SPI Ethernet driver for ESP32 with ESP-IDF esp_eth / esp_netif inte
 ![Image showing ESP32 and W5500 connected on a breadboard](./examples/assets/esp32_w5500.jpg)
 
 ## Wiring
+
 | ESP32 | W5500 |
 |---|---|
 | 3V3 | VCC |
@@ -29,7 +30,7 @@ Run:
 source ~/.espressif/tools/activate_idf_[YOUR_VERSION].sh
 ```
 
-If you are unsure about your version run:
+If you are unsure about your version, run:
 ```cmd
 cd ~/.espressif/tools/
 ls
@@ -46,7 +47,7 @@ idf.py --version
 ![screenshot showing the activation script](./examples/assets/version_check.png)
 
 ### Running The Demo
-Clone the repo and change to the demo directory with:
+Clone the repo and change to the demo directory:
 ```cmd
 git clone https://github.com/Teja-Tatimatla/esp32-w5500-driver.git
 cd esp32-w5500-driver/examples/http_demo
@@ -115,12 +116,12 @@ http://fastly.picsum.photos/id/556/5000/3333.jpg?hmac=3OTX-0AU9J26J1kYVIcJjDFGrA
 
 ![Image showing the result after visiting the /image endpoint](./examples/assets/image_endpoint.png)
 
-> Note that the images may load slower than actually visiting them on your browser.
-> This is because instead of Browser -> Picsum CDN the demo has the following overhead:
-> Browser -> ESP32 -> Picsum CDN -> ESP32 -> Browser
+> Note that the images may load slower than actually visiting them on your browser.<br>
+> This is because instead of Browser -> Picsum CDN the demo has the following overhead:<br>
+> Browser -> ESP32 -> Picsum CDN -> ESP32 -> Browser<br>
 > Small 2048 byte buffer for image download
-> SPI overhead:
-> W5500 Ethernet PHY/MAC -> W5500 internal RX buffer -> SPI transfer -> ESP32 lwIP -> HTTP client/server code
+> SPI overhead:<br>
+> W5500 Ethernet PHY/MAC -> W5500 internal RX buffer -> SPI transfer -> ESP32 lwIP -> HTTP client/server code<br>
 
 # Special
 ## Instructions to set up code-intelligence on Zed code editor
