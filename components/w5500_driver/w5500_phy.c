@@ -12,29 +12,6 @@
 
 static const char *TAG = "w5500_phy";
 
-// W5500 PHYCFGR bits
-#define W5500_PHYCFGR_RST         (1u << 7)
-#define W5500_PHYCFGR_OPMD        (1u << 6)
-#define W5500_PHYCFGR_OPMDC_MASK  (0x7u << 3)
-#define W5500_PHYCFGR_DPX         (1u << 2)
-#define W5500_PHYCFGR_SPD         (1u << 1)
-#define W5500_PHYCFGR_LNK         (1u << 0)
-
-typedef struct {
-    esp_eth_phy_t parent;
-    esp_eth_mediator_t *mediator;
-    eth_phy_config_t config;
-
-    uint32_t addr;
-    bool autoneg_enabled;
-    bool power_enabled;
-    uint32_t pause_ability;
-
-    eth_link_t link;
-    eth_speed_t speed;
-    eth_duplex_t duplex;
-} w5500_eth_phy_t;
-
 static inline
 w5500_eth_phy_t* w5500_phy_from_parent(esp_eth_phy_t* phy) {
   return (w5500_eth_phy_t *)phy;
