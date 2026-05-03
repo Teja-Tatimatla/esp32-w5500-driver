@@ -68,6 +68,34 @@ demo_status_get_handler(httpd_req_t* req) {
   return ESP_OK;
 }
 
+static esp_err_t
+demo_image_get_handler(httpd_req_t* req) {
+  if (!demo_is_available()) {
+    const char* response = "{\"status\":\"error\",\"network\":\"unavailable\"}";
+
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_set_status(req, "503 Service Unavailable");
+    httpd_resp_sendstr(req, response);
+    demo_data_add_bytes(strlen(response));
+    return ESP_OK;
+  }
+
+  uint64_t bytes_streamed = 0;
+  esp_err_t err = demo_image_client_stream_jpeg(req, &bytes_streamed);
+  if (err != ESP_OK) {
+    const char* response = "{\"status\":\"error\",\"message\":\"image fetch failed\"}";
+
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_set_status(req, "502 Bad Gateway");
+    httpd_resp_sendstr(req, response);
+    demo_data_add_bytes(strlen(response));
+    return ESP_OK;
+  }
+
+  demo_data_add_bytes(bytes_streamed);
+  return ESP_OK;
+}
+
 esp_err_t
 demo_http_server_start(void) {
   if (http_server != NULL) {
@@ -95,6 +123,21 @@ demo_http_server_start(void) {
   err = httpd_register_uri_handler(http_server, &status_uri);
   if (err != ESP_OK) {
     ESP_LOGE(TAG, "failed to register /status handler: %s", esp_err_to_name(err));
+    httpd_stop(http_server);
+    http_server = NULL;
+    return err;
+  }
+
+  httpd_uri_t image_uri = {
+    .uri = "/image",
+    .method = HTTP_GET,
+    .handler = demo_image_get_handler,
+    .user_ctx = NULL,
+  };
+
+  err = httpd_register_uri_handler(http_server, &image_uri);
+  if (err != ESP_OK) {
+    ESP_LOGE(TAG, "failed to register /image handler: %s", esp_err_to_name(err));
     httpd_stop(http_server);
     http_server = NULL;
     return err;
