@@ -15,7 +15,7 @@ Run:
 source ~/.espressif/tools/activate_idf_[YOUR_VERSION].sh
 ```
 
-If you are unsure about your version run:
+If you are unsure about your version, run:
 ```cmd
 cd ~/.espressif/tools/
 ls
