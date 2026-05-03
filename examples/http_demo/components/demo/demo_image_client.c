@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include <string.h>
+#include <stdlib.h>
 #include "esp_http_client.h"
 #include "esp_http_server.h"
 #include "esp_log.h"
@@ -19,7 +20,7 @@ static const char* DEMO_IMAGE_URLS[] = {
 };
 
 #define DEMO_IMAGE_URL_COUNT (sizeof(DEMO_IMAGE_URLS) / sizeof(DEMO_IMAGE_URLS[0]))
-#define DEMO_IMAGE_READ_BUFFER_SIZE 512
+#define DEMO_IMAGE_READ_BUFFER_SIZE 4096
 
 static const char*
 demo_image_pick_random_url(void) {
@@ -37,8 +38,13 @@ demo_image_client_stream_jpeg(void* req, uint64_t* bytes_streamed) {
   *bytes_streamed = 0;
 
   httpd_req_t* http_req = (httpd_req_t *)req;
-  uint8_t buffer[DEMO_IMAGE_READ_BUFFER_SIZE] = {0};
   const char* image_url = demo_image_pick_random_url();
+
+  uint8_t* buffer = malloc(DEMO_IMAGE_READ_BUFFER_SIZE);
+  if (buffer == NULL) {
+    ESP_LOGE(TAG, "image buffer allocation failed");
+    return ESP_ERR_NO_MEM;
+  }
 
   esp_http_client_config_t config = {
     .url = image_url,
@@ -48,6 +54,7 @@ demo_image_client_stream_jpeg(void* req, uint64_t* bytes_streamed) {
 
   esp_http_client_handle_t client = esp_http_client_init(&config);
   if (client == NULL) {
+    free(buffer);
     return ESP_ERR_NO_MEM;
   }
 
@@ -55,6 +62,7 @@ demo_image_client_stream_jpeg(void* req, uint64_t* bytes_streamed) {
   if (err != ESP_OK) {
     ESP_LOGE(TAG, "image HTTP open failed: %s", esp_err_to_name(err));
     esp_http_client_cleanup(client);
+    free(buffer);
     return err;
   }
 
@@ -65,6 +73,7 @@ demo_image_client_stream_jpeg(void* req, uint64_t* bytes_streamed) {
     ESP_LOGE(TAG, "image HTTP status failed: status=%d content_length=%d", status_code, content_length);
     esp_http_client_close(client);
     esp_http_client_cleanup(client);
+    free(buffer);
     return ESP_ERR_INVALID_RESPONSE;
   }
 
@@ -73,12 +82,13 @@ demo_image_client_stream_jpeg(void* req, uint64_t* bytes_streamed) {
   httpd_resp_set_type(http_req, "image/jpeg");
 
   while (true) {
-    int bytes_read = esp_http_client_read(client, (char *)buffer, sizeof(buffer));
+    int bytes_read = esp_http_client_read(client, (char *)buffer, DEMO_IMAGE_READ_BUFFER_SIZE);
 
     if (bytes_read < 0) {
       ESP_LOGE(TAG, "image HTTP read failed");
       esp_http_client_close(client);
       esp_http_client_cleanup(client);
+      free(buffer);
       return ESP_FAIL;
     }
 
@@ -91,6 +101,7 @@ demo_image_client_stream_jpeg(void* req, uint64_t* bytes_streamed) {
       ESP_LOGE(TAG, "image stream to browser failed: %s", esp_err_to_name(err));
       esp_http_client_close(client);
       esp_http_client_cleanup(client);
+      free(buffer);
       return err;
     }
 
@@ -99,6 +110,7 @@ demo_image_client_stream_jpeg(void* req, uint64_t* bytes_streamed) {
 
   esp_http_client_close(client);
   esp_http_client_cleanup(client);
+  free(buffer);
 
   err = httpd_resp_send_chunk(http_req, NULL, 0);
   if (err != ESP_OK) {
