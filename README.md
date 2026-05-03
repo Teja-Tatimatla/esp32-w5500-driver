@@ -119,7 +119,7 @@ http://fastly.picsum.photos/id/556/5000/3333.jpg?hmac=3OTX-0AU9J26J1kYVIcJjDFGrA
 > Note that the images may load slower than actually visiting them on your browser.<br>
 > This is because instead of Browser -> Picsum CDN the demo has the following overhead:<br>
 > Browser -> ESP32 -> Picsum CDN -> ESP32 -> Browser<br>
-> Small 2048 byte buffer for image download
+> Small 4096 byte buffer for image download
 > SPI overhead:<br>
 > W5500 Ethernet PHY/MAC -> W5500 internal RX buffer -> SPI transfer -> ESP32 lwIP -> HTTP client/server code<br>
 
