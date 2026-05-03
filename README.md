@@ -116,12 +116,12 @@ http://fastly.picsum.photos/id/556/5000/3333.jpg?hmac=3OTX-0AU9J26J1kYVIcJjDFGrA
 
 ![Image showing the result after visiting the /image endpoint](./examples/assets/image_endpoint.png)
 
-> Note that the images may load slower than actually visiting them on your browser.
-> This is because instead of Browser -> Picsum CDN the demo has the following overhead:
-> Browser -> ESP32 -> Picsum CDN -> ESP32 -> Browser
-> Small 4096 byte buffer for image download
-> SPI overhead:
-> W5500 Ethernet PHY/MAC -> W5500 internal RX buffer -> SPI transfer -> ESP32 lwIP -> HTTP client/server code
+> Note that the images may load slower than actually visiting them on your browser.<br>
+> This is because instead of Browser -> Picsum CDN the demo has the following overhead:<br>
+> Browser -> ESP32 -> Picsum CDN -> ESP32 -> Browser<br>
+> Small 4096 byte buffer for image download<br>
+> SPI overhead:<br>
+> W5500 Ethernet PHY/MAC -> W5500 internal RX buffer -> SPI transfer -> ESP32 lwIP -> HTTP client/server code<br>
 
 # Special
 ## Instructions to set up code-intelligence on Zed code editor
