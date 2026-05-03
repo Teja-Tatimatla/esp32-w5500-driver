@@ -1,6 +1,20 @@
 # esp32-w5500-driver
 Custom W5500 SPI Ethernet driver for ESP32 with ESP-IDF esp_eth / esp_netif integration
 
+![Image showing ESP32 and W5500 connected on a breadboard](./examples/assets/esp32_w5500.jpg)
+
+## Wiring
+| ESP32 | W5500 |
+|---|---|
+| 3V3 | VCC |
+| GND | GND |
+| GPIO23 | MOSI |
+| GPIO22 | RESET / RSTn |
+| GPIO21 | SCSn / CS |
+| GPIO19 | MISO |
+| GPIO18 | SCLK |
+| GPIO4 | INTn |
+
 ## Instructions to Run The Demo
 
 Make sure you have [ESP-IDF](https://docs.espressif.com/projects/idf-im-ui/en/latest/#linux-installation-via-homebrew) installed on your machine.
