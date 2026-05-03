@@ -20,7 +20,7 @@ static const char* DEMO_IMAGE_URLS[] = {
 };
 
 #define DEMO_IMAGE_URL_COUNT (sizeof(DEMO_IMAGE_URLS) / sizeof(DEMO_IMAGE_URLS[0]))
-#define DEMO_IMAGE_READ_BUFFER_SIZE 4096
+#define DEMO_IMAGE_READ_BUFFER_SIZE 2048
 
 static const char*
 demo_image_pick_random_url(void) {
