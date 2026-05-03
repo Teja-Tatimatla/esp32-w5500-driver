@@ -4,6 +4,7 @@ Custom W5500 SPI Ethernet driver for ESP32 with ESP-IDF esp_eth / esp_netif inte
 ![Image showing ESP32 and W5500 connected on a breadboard](./examples/assets/esp32_w5500.jpg)
 
 ## Wiring
+
 | ESP32 | W5500 |
 |---|---|
 | 3V3 | VCC |
