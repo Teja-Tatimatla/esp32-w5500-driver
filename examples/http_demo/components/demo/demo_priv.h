@@ -24,4 +24,5 @@ esp_err_t demo_data_set_network_down(void);
 esp_err_t demo_data_get_snapshot(demo_data_snapshot_t* snapshot);
 esp_err_t demo_data_add_bytes(uint64_t bytes);
 
+esp_err_t demo_image_client_stream_jpeg(void* req, uint64_t* bytes_streamed);
 #endif

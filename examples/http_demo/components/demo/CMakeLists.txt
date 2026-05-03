@@ -3,11 +3,12 @@ idf_component_register(
     "demo.c"
     "demo_data.c"
     "demo_http_server.c"
-    "demo_art_client.c"
+    "demo_image_client.c"
   INCLUDE_DIRS
     "include"
   REQUIRES
     esp_netif
     esp_http_server
+    esp_http_client
     esp_timer
 )
