@@ -32,7 +32,7 @@ idf.py --version
 ![screenshot showing the activation script](./examples/assets/version_check.png)
 
 ### Running The Demo
-Clone the repo and change to the demo directory with:
+Clone the repo and change to the demo directory:
 ```cmd
 git clone https://github.com/Teja-Tatimatla/esp32-w5500-driver.git
 cd esp32-w5500-driver/examples/http_demo
