@@ -18,18 +18,6 @@
 
 static const char *TAG = "w5500_mac";
 
-// Ethernet frame is 1518 bytes
-#define W5500_MAC_RX_BUF_SIZE 1600
-
-typedef struct {
-  esp_eth_mac_t parent;
-  esp_eth_mediator_t* mediator;
-  eth_mac_config_t config;
-  TaskHandle_t rx_task_handle;
-  bool started;
-  uint8_t mac_addr[6];
-} w5500_eth_mac_t;
-
 static void w5500_mac_rx_task(void *arg);
 static esp_err_t w5500_mac_start_rx_task(w5500_eth_mac_t* ext_mac);
 static esp_err_t w5500_mac_receive_one_frame(w5500_eth_mac_t* ext_mac, uint8_t* buf, uint32_t* length);

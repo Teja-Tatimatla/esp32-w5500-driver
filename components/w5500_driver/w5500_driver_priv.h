@@ -13,6 +13,18 @@
 #include "esp_err.h"
 #include "w5500_driver.h"
 
+typedef struct {
+  w5500_driver_config_t cfg;
+  spi_device_handle_t spi_handle;
+  bool initialized;
+  bool gpio_isr_service_installed;
+  bool gpio_handler_installed;
+  TaskHandle_t interrupt_task_handle;
+  SemaphoreHandle_t spi_lock;
+} w5500_context_t;
+
+extern w5500_context_t w5500_global_context;
+
 #define W5500_SPI_RWB_READ    0x00
 #define W5500_SPI_RWB_WRITE   0x04
 
@@ -75,18 +87,40 @@
 #define W5500_SN_MR_MACRAW        0x04 // Value for setting MACRAW in SN_MR
 #define W5500_REG_SHAR            0x0009 // source hardware address register
 
-typedef struct {
-  w5500_driver_config_t cfg;
-  spi_device_handle_t spi_handle;
-  bool initialized;
-  bool gpio_isr_service_installed;
-  bool gpio_handler_installed;
-  TaskHandle_t interrupt_task_handle;
-  bool socket0_tx_in_flight;
-  SemaphoreHandle_t spi_lock;
-} w5500_context_t;
+// Ethernet frame is 1518 bytes
+#define W5500_MAC_RX_BUF_SIZE 1600
 
-extern w5500_context_t w5500_global_context;
+typedef struct {
+  esp_eth_mac_t parent;
+  esp_eth_mediator_t* mediator;
+  eth_mac_config_t config;
+  TaskHandle_t rx_task_handle;
+  bool started;
+  uint8_t mac_addr[6];
+} w5500_eth_mac_t;
+
+// W5500 PHYCFGR bits
+#define W5500_PHYCFGR_RST         (1u << 7)
+#define W5500_PHYCFGR_OPMD        (1u << 6)
+#define W5500_PHYCFGR_OPMDC_MASK  (0x7u << 3)
+#define W5500_PHYCFGR_DPX         (1u << 2)
+#define W5500_PHYCFGR_SPD         (1u << 1)
+#define W5500_PHYCFGR_LNK         (1u << 0)
+
+typedef struct {
+    esp_eth_phy_t parent;
+    esp_eth_mediator_t *mediator;
+    eth_phy_config_t config;
+
+    uint32_t addr;
+    bool autoneg_enabled;
+    bool power_enabled;
+    uint32_t pause_ability;
+
+    eth_link_t link;
+    eth_speed_t speed;
+    eth_duplex_t duplex;
+} w5500_eth_phy_t;
 
 // SPI layer
 esp_err_t w5500_spi_init(const w5500_driver_config_t* config);
