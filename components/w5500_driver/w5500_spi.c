@@ -60,7 +60,7 @@ w5500_spi_init(const w5500_driver_config_t* w5500_driver_config) {
     .sclk_io_num = w5500_driver_config->pin_sclk,
     .quadwp_io_num = -1,
     .quadhd_io_num = -1,
-    .max_transfer_sz = 4096,
+    .max_transfer_sz = 4096 + 3, // 3 bytes for header
   };
 
   esp_err_t err = spi_bus_initialize(w5500_driver_config->spi_host, &bus_config, SPI_DMA_CH_AUTO);
