@@ -16,6 +16,58 @@ Custom W5500 SPI Ethernet driver for ESP32 with ESP-IDF `esp_eth` and `esp_netif
 | GPIO18 | SCLK |
 | GPIO4 | INTn |
 
+## Functional Requirements
+
+### FR-01: Ethernet Interface Initialization
+
+| ID | Requirement |
+|---|---|
+| FR-01.1 | The system shall initialize the Ethernet interface during startup. |
+| FR-01.2 | The system shall report a failure status if the Ethernet controller is unavailable during startup. |
+| FR-01.3 | The system shall report a failure status if the Ethernet controller is unresponsive during startup. |
+
+### FR-02: Ethernet Event Detection
+
+| ID | Requirement |
+|---|---|
+| FR-02.1 | The system shall detect Ethernet controller events. |
+| FR-02.2 | The system shall notify the communication service logic when an Ethernet controller event occurs. |
+
+### FR-03: Ethernet Frame Reception
+
+| ID | Requirement |
+|---|---|
+| FR-03.1 | The system shall receive Ethernet frames from the Ethernet controller. |
+| FR-03.2 | The system shall deliver each received Ethernet frame to the network stack for processing. |
+
+### FR-04: Ethernet Frame Transmission
+
+| ID | Requirement |
+|---|---|
+| FR-04.1 | The system shall accept outbound Ethernet frames from the network stack. |
+| FR-04.2 | The system shall transmit outbound Ethernet frames through the Ethernet controller. |
+| FR-04.3 | The system shall report a transmission result for each outbound Ethernet frame. |
+| FR-04.4 | The transmission result shall indicate either success or timeout. |
+
+### FR-05: IP-Based Network Communication
+
+| ID | Requirement |
+|---|---|
+| FR-05.1 | The system shall support IP-based communication over the Ethernet interface. |
+| FR-05.2 | The system shall support IP-based communication only after successful Ethernet interface initialization. |
+| FR-05.3 | The system shall support IP-based communication only after successful network configuration. |
+
+## Backend Functional Requirements
+
+| ID | Requirement |
+|---|---|
+| FR-06 | The system shall start an HTTP server after successful Ethernet initialization and network configuration. |
+| FR-07 | The system shall accept HTTP requests from a client device on the same network. |
+| FR-08 | The system shall provide visualization data through at least one HTTP endpoint. |
+| FR-09 | The system shall return the most recent available data in each HTTP response. |
+| FR-10 | The system shall reject backend requests when the Ethernet interface or network configuration is unavailable. |
+
+
 ## Architecture Overview
 
 This project exposes W5500 hardware to ESP-IDF as a custom Ethernet MAC/PHY driver.  
@@ -44,6 +96,37 @@ flowchart TD
     E --> F
     F --> G
 ```
+
+## Architectural Trade-Off and Rationale
+
+The W5500 includes a hardwired TCP/IP stack, an embedded 10/100 Ethernet MAC and PHY, hardware sockets, and internal packet buffer memory. Because of that, one possible design would be to use the W5500 as a socket-oriented network coprocessor and let the chip handle TCP/IP processing internally.
+
+This project instead uses the W5500 as an Ethernet interface integrated with the ESP-IDF networking architecture. In this design, the W5500 provides Ethernet frame transmission/reception through SPI, while ESP-IDF `esp_eth`, `esp_netif`, and lwIP provide the standard network interface and TCP/IP stack integration.
+
+Espressif’s W5500 component documentation notes that the W5500 includes a hardwired TCP/IP stack, but that this stack is **not used** by the ESP driver. Espressif’s Ethernet documentation also describes that, before attaching an Ethernet driver to the TCP/IP stack through `esp_netif`, the Ethernet driver is still operating at OSI Layer 2, the Data Link layer.
+
+### Rationale for the Selected Architecture
+
+The selected architecture allows the W5500 driver to integrate with ESP-IDF’s Ethernet framework and the normal `esp_eth` / `esp_netif` connection model. This makes the W5500 behave like a standard Ethernet network interface inside the ESP32 software environment, instead of behaving like a separate socket-processing subsystem.
+
+### Alternative Rejected: Use the W5500 as a Socket-Based Coprocessor
+
+**Advantage:**  
+This approach could offload more TCP/IP processing from the ESP32 because the W5500 includes a hardwired TCP/IP stack and hardware socket support.
+
+**Limitations:**
+
+- Communication would be constrained to the W5500 hardware socket model.
+- The W5500 supports a limited number of hardware sockets.
+- Standard ESP-IDF networking services, such as the HTTP server/client, sockets API integration through lwIP, and normal `esp_netif` behavior, would require additional adaptation.
+
+### Alternative Selected: Use the W5500 as an Ethernet Interface Under ESP-IDF
+
+**Advantage:**  
+This approach aligns with ESP-IDF’s Ethernet driver architecture and allows the W5500 to integrate with the platform’s standard networking stack and services.
+
+**Result:**  
+The custom driver handles the Ethernet MAC/PHY interface and raw Ethernet frame movement, while ESP-IDF `esp_netif` and lwIP handle DHCP, IP, TCP, UDP, sockets, and higher-level networking services.
 
 ### Layer Responsibilities
 
