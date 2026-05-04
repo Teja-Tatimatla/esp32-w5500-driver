@@ -1,5 +1,5 @@
 # esp32-w5500-driver
-Custom W5500 SPI Ethernet driver for ESP32 with ESP-IDF esp_eth / esp_netif integration
+Custom W5500 SPI Ethernet driver for ESP32 with ESP-IDF `esp_eth` and `esp_netif` integration.
 
 ![Image showing ESP32 and W5500 connected on a breadboard](./examples/assets/esp32_w5500.jpg)
 
@@ -15,6 +15,49 @@ Custom W5500 SPI Ethernet driver for ESP32 with ESP-IDF esp_eth / esp_netif inte
 | GPIO19 | MISO |
 | GPIO18 | SCLK |
 | GPIO4 | INTn |
+
+## Architecture Overview
+
+This project exposes W5500 hardware to ESP-IDF as a custom Ethernet MAC/PHY driver.  
+The W5500 is used in MACRAW mode, while ESP-IDF `esp_netif` and lwIP handle the higher-level networking stack.
+
+```mermaid
+flowchart TD
+    A["Application Layer<br/>Demo HTTP server/client"]
+
+    B["Transport Layer<br/>TCP / UDP"]
+
+    C["Network Layer<br/>IP / DHCP / ARP / ICMP"]
+
+    D["ESP-IDF Network Interface Layer<br/>esp_netif + lwIP"]
+
+    E["ESP-IDF Ethernet Abstraction<br/>esp_eth"]
+
+    F["Custom W5500 Driver<br/>w5500_mac.c → Layer 2 MAC/frame handling<br/>w5500_phy.c → Layer 1 PHY control/status wrapper<br/>w5500_regs.c / w5500_spi.c → register and SPI access"]
+
+    G["W5500 Hardware<br/>Internal MAC<br/>Internal PHY<br/>RX/TX packet memory<br/>Ethernet cable signaling"]
+
+    A --> B
+    B --> C
+    C --> D
+    D --> E
+    E --> F
+    F --> G
+```
+
+### Layer Responsibilities
+
+| Layer / Component | Responsibility |
+|---|---|
+| Application Layer | Demo HTTP server/client logic |
+| Transport Layer | TCP and UDP, handled by lwIP |
+| Network Layer | IP, DHCP, ARP, and ICMP, handled by lwIP |
+| `esp_netif` | Connects lwIP to the Ethernet interface |
+| `esp_eth` | ESP-IDF Ethernet driver abstraction |
+| `w5500_mac.c` | Layer 2 Ethernet frame transmit/receive and MAC address handling |
+| `w5500_phy.c` | Layer 1 PHY status/control wrapper for link, speed, duplex, and power |
+| `w5500_regs.c` / `w5500_spi.c` | Low-level W5500 register and SPI access |
+| W5500 Hardware | Internal MAC, internal PHY, RX/TX memory, and physical Ethernet signaling |
 
 ## Instructions to Run The Demo
 
